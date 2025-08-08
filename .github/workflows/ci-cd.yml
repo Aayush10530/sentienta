@@ -1,0 +1,57 @@
+
+name: CI/CD - Build & Simulate Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: ${{ github.repository }}:ci-${{ github.run_id }}
+      CONTAINER_NAME: dummy-demo-${{ github.run_id }}
+      PORT: 8080
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: false
+          tags: ${{ env.IMAGE_NAME }}
+
+      - name: Run container (simulate deployment)
+        run: |
+          docker run -d --name "${{ env.CONTAINER_NAME }}" -p ${{ env.PORT }}:8080 ${{ env.IMAGE_NAME }}
+          retries=12
+          until curl -sSf http://127.0.0.1:${{ env.PORT }}/ -m 2 || [ $retries -le 0 ]; do
+            echo "waiting for app..."
+            sleep 2
+            retries=$((retries-1))
+          done
+
+      - name: Smoke test - GET /
+        run: |
+          curl -v --fail http://127.0.0.1:${{ env.PORT }}/
+
+      - name: Smoke test - POST /predict
+        run: |
+          curl -v --fail -H "Content-Type: application/json" \
+            -d '{"data": {"text": "hello world", "id": 123}}' \
+            http://127.0.0.1:${{ env.PORT }}/predict
+
+      - name: Stop and remove container
+        if: always()
+        run: |
+          docker logs ${{ env.CONTAINER_NAME }} || true
+          docker rm -f ${{ env.CONTAINER_NAME }} || true
+
