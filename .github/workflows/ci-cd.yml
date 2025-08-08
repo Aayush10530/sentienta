@@ -37,6 +37,11 @@ jobs:
             echo "waiting for app..."
             sleep 2
             retries=$((retries-1))
+            if [ $retries -le 0 ]; then
+              echo "Error: Application failed to start within the expected time"
+              docker logs ${{ env.CONTAINER_NAME }}
+              exit 1
+            fi
           done
 
       - name: Smoke test - GET /
