@@ -11,7 +11,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     env:
-      IMAGE_NAME: ${{ github.repository }}:ci-${{ github.run_id }}
+      IMAGE_NAME: sentienta:ci-${{ github.run_id }}
       CONTAINER_NAME: dummy-demo-${{ github.run_id }}
       PORT: 8080
 
